@@ -37,12 +37,17 @@ def get_next_event(schedule, now):
     return None
 
 
-def speak(text):
-    """Use Windows' built-in SAPI5 voice (via pyttsx3) to say 'text' out loud."""
+def speak(text, voice_index=1, rate=175):
+    """Speak 'text' using the selected Windows voice."""
     engine = pyttsx3.init()
-    engine.say(text)
-    engine.runAndWait()  # blocks until speaking is finished
 
+    voices = engine.getProperty("voices")
+    engine.setProperty("voice", voices[voice_index].id)
+
+    engine.setProperty("rate", rate)  # words per minute; default ~200
+
+    engine.say(text)
+    engine.runAndWait()
 
 def main():
     now = datetime.now().time()
