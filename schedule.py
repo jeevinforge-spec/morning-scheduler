@@ -4,12 +4,18 @@ Morning Scheduler
 Checks the current time against a hardcoded daily schedule and speaks
 the next upcoming event out loud.
 
-Works on Windows (pyttsx3 / SAPI5) and on Android under Termux
-(termux-tts-speak, from the termux-api package).
+Works on:
+- Windows (pyttsx3 / SAPI5)
+- Android under Termux (termux-tts-speak, from termux-api)
+- Android under Pydroid 3 (gTTS + pygame)
 """
+
+import os
+os.environ["SDL_VIDEODRIVER"] = "dummy"  # try to keep pygame headless
 
 import shutil
 import subprocess
+import tempfile
 from datetime import datetime
 
 SCHEDULE = [
@@ -41,13 +47,34 @@ def format_time_for_speech(time_str):
 
 def speak(text, voice_index=1, rate=175):
     """Speak 'text' using whichever engine this device actually has."""
-    # Android / Termux: use the phone's own TTS engine.
+
+    # Termux (Android): phone's own TTS engine.
     if shutil.which("termux-tts-speak"):
         subprocess.run(["termux-tts-speak", text])
         return
 
-    # Windows: import here, not at the top, so this file still runs on
-    # Android where pyttsx3 isn't installed.
+    # Pydroid 3 (Android): generate an MP3 with gTTS, play with pygame.
+    try:
+        from gtts import gTTS
+        import pygame
+
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+            temp_path = f.name
+
+        gTTS(text=text, lang="en").save(temp_path)
+
+        pygame.mixer.init()
+        pygame.mixer.music.load(temp_path)
+        pygame.mixer.music.play()
+        while pygame.mixer.music.get_busy():
+            pygame.time.wait(100)
+
+        os.remove(temp_path)
+        return
+    except ModuleNotFoundError:
+        pass  # not on Pydroid — fall through to Windows path
+
+    # Windows: pyttsx3 / SAPI5.
     import pyttsx3
 
     engine = pyttsx3.init()
